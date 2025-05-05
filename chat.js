@@ -1,7 +1,9 @@
-const OpenAI = require("openai");
-const dotenv = require("dotenv");
-const { get } = require("http");
-const readline = require("readline").createInterface({
+import OpenAI from "openai";
+import dotenv from "dotenv";
+import readline from "readline";
+import { promises as fsPromises } from "fs";
+
+const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
@@ -9,12 +11,12 @@ const readline = require("readline").createInterface({
 dotenv.config();
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY_NEW,
+  apiKey: process.env.OPENAI_API_KEY_2,
 });
 
 async function getReadlineInput(question) {
   return new Promise((resolve) => {
-    readline.question(question, (input) => {
+    rl.question(question, (input) => {
       resolve(input);
     });
   });
@@ -43,23 +45,27 @@ async function chatWithAI(userMessage) {
 //chatWithAI("Hello, can you write be a playlist of the best 10 songs of 2023?");
 
 async function saveRecipe(res, aiRes) {
-  const fs = require("fs");
   const sanitizeRecipeName = sanitizeRecipeListForFileName(res);
+  console.log("sanitized name: ", sanitizeRecipeName);
   const fileName = `./recipes/${sanitizeRecipeName}_recipe.txt`;
   const data = `${aiRes}`;
 
-  fs.appendFile(fileName, data, (err) => {
-    if (err) {
-      console.error("Error writing to file:", err);
-    } else {
-      console.log("Recipe saved to", fileName);
-    }
-  });
+  try {
+    await fsPromises.appendFile(fileName, data);
+  } catch (err) {
+    console.error("Error writing to file:", err);
+  }
+  console.log("Recipe saved to", fileName);
 }
 
 function sanitizeRecipeListForFileName(res) {
-  const removeCommas = res.split(",");
-  const removeSpaces = removeCommas.split(" ").join("_");
+  if (res.includes("and")) {
+    res = res.replace(/and/g, ",");
+  }
+  //not trimming the white space
+  //is there a better way to sanitize the titles?
+  const removeCommas = res.split(", ").map((item) => item.trim());
+  const removeSpaces = removeCommas.join("_");
   return removeSpaces;
 }
 
@@ -78,7 +84,8 @@ async function main() {
   } else {
     console.log("Not saved");
   }
-  readline.close();
+  rl.close();
 }
 
 main();
+//coammnder
